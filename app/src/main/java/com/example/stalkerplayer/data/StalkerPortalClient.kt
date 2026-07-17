@@ -39,27 +39,34 @@ class StalkerPortalClient(private val config: PortalConfig) {
     }
 
     private fun request(query: String, needsAuth: Boolean = true): JSONObject? {
-        val urlStr = buildUrl(query)
-        val builder = Request.Builder()
-            .url(urlStr)
-            .header("User-Agent", userAgent)
-            .header("Cookie", cookieHeader())
-            .header("X-User-Agent", "Model: MAG250; Link: WiFi")
-            .header("Referer", "$baseUrl/c/")
+        return try {
+            val urlStr = buildUrl(query)
+            val builder = Request.Builder()
+                .url(urlStr)
+                .header("User-Agent", userAgent)
+                .header("Cookie", cookieHeader())
+                .header("X-User-Agent", "Model: MAG250; Link: WiFi")
+                .header("Referer", "$baseUrl/c/")
 
-        if (needsAuth && token != null) {
-            builder.header("Authorization", "Bearer $token")
-        }
-
-        client.newCall(builder.build()).execute().use { response ->
-            if (!response.isSuccessful) return null
-            val body = response.body?.string() ?: return null
-            if (body.isBlank()) return null
-            return try {
-                JSONObject(body)
-            } catch (e: Exception) {
-                null
+            if (needsAuth && token != null) {
+                builder.header("Authorization", "Bearer $token")
             }
+
+            client.newCall(builder.build()).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val body = response.body?.string() ?: return null
+                if (body.isBlank()) return null
+                try {
+                    JSONObject(body)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            // Toute erreur réseau (URL invalide, portail injoignable, pas de
+            // connexion internet, timeout...) ne doit jamais faire planter
+            // l'application : on renvoie simplement "pas de réponse".
+            null
         }
     }
 
